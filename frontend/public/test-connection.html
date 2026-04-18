@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #28a745; }
+        .error { background: #f8d7da; border-color: #dc3545; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Backend Connection Test</h1>
+    <p>This page tests if the frontend can reach the backend.</p>
+
+    <div class="test" id="health-test">
+        <h3>Test 1: Health Check</h3>
+        <button onclick="testHealth()">Run Test</button>
+        <pre id="health-result">Click to test...</pre>
+    </div>
+
+    <div class="test" id="token-test">
+        <h3>Test 2: Check Token</h3>
+        <button onclick="checkToken()">Run Test</button>
+        <pre id="token-result">Click to check token...</pre>
+    </div>
+
+    <div class="test" id="testchat-test">
+        <h3>Test 3: Test Chat (No Auth Required)</h3>
+        <p><em>This test will fail if auth is required, but will show us the actual error</em></p>
+        <button onclick="testTestChat()">Run Test</button>
+        <pre id="testchat-result">Click to test...</pre>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+
+        async function testHealth() {
+            const resultEl = document.getElementById("health-result");
+            resultEl.textContent = "Testing...";
+            try {
+                const res = await fetch(`${API_URL}/api/health`);
+                const data = await res.json();
+                resultEl.parentElement.className = "test success";
+                resultEl.textContent = "✅ SUCCESS:\n" + JSON.stringify(data, null, 2);
+            } catch (err) {
+                resultEl.parentElement.className = "test error";
+                resultEl.textContent = "❌ FAILED:\n" + err.message;
+            }
+        }
+
+        async function checkToken() {
+            const resultEl = document.getElementById("token-result");
+            const token = localStorage.getItem("token");
+            resultEl.parentElement.className = "test";
+            resultEl.textContent = `Token in localStorage: ${token ? "PRESENT (length: " + token.length + ")" : "NOT FOUND"}\n\n` +
+                `Full token (first 50 chars): ${token ? token.substring(0, 50) + "..." : "N/A"}`;
+        }
+
+        async function testTestChat() {
+            const resultEl = document.getElementById("testchat-result");
+            resultEl.textContent = "Testing...";
+            try {
+                const token = localStorage.getItem("token");
+                const headers = {
+                    "Content-Type": "application/json",
+                };
+                if (token) {
+                    headers["Authorization"] = `Bearer ${token}`;
+                }
+
+                const res = await fetch(`${API_URL}/api/bots/test-chat`, {
+                    method: "POST",
+                    headers: headers,
+                    body: JSON.stringify({ message: "hello" }),
+                });
+
+                const data = await res.json();
+                
+                if (res.ok) {
+                    resultEl.parentElement.className = "test success";
+                    resultEl.textContent = "✅ SUCCESS:\n" + JSON.stringify(data, null, 2);
+                } else {
+                    resultEl.parentElement.className = "test error";
+                    resultEl.textContent = `❌ FAILED (HTTP ${res.status}):\n` + JSON.stringify(data, null, 2);
+                }
+            } catch (err) {
+                resultEl.parentElement.className = "test error";
+                resultEl.textContent = "❌ NETWORK ERROR:\n" + err.message + "\n\nThis usually means:\n- Backend is not running\n- CORS is blocking the request\n- Network issue";
+            }
+        }
+    </script>
+</body>
+</html>
