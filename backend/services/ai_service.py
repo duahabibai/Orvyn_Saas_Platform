@@ -119,22 +119,36 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
     about = contact.get('about', '')
     services = contact.get('services', [])
 
+    # Extract contact details with fallbacks
+    contact_phone = contact.get('phone', '')
+    contact_email = contact.get('email', '')
+    contact_address = contact.get('address', '')
+    contact_hours = contact.get('hours', '')
+
     # Feature gating: Product info only for Growth plan in Product business
-    # Service businesses always show services/contact regardless of plan
+    # Service businesses always show services/contact info regardless of plan
     show_products = (user_plan == "growth" and business_type == "product")
 
-    website_section = f"## WEBSITE INFO ({site_name}):\n"
+    # Build CONTACT section FIRST (most important for service queries)
+    contact_section = f"## 📞 CONTACT INFO for {site_name}:\n"
+    contact_section += f"- Phone: {contact_phone if contact_phone else 'Available on website'}\n"
+    contact_section += f"- Email: {contact_email if contact_email else 'Available on website'}\n"
+    contact_section += f"- Address: {contact_address if contact_address else 'Available on website'}\n"
+    if contact_hours:
+        contact_section += f"- Business Hours: {contact_hours}\n"
+
+    website_section = f"## 🌐 WEBSITE INFO ({site_name}):\n"
     if site_desc: website_section += f"- Description: {site_desc}\n"
     if about: website_section += f"- About: {about[:800]}\n"
-    if services: website_section += f"- Services: {', '.join(services[:15])}\n"
+    if services: website_section += f"- 🛠️ Services: {', '.join(services[:15])}\n"
     website_section += f"- Business Type: {business_type.upper()} based\n"
-    website_section += f"- Plan: {user_plan.title()}\n"
+    website_section += f"- User Plan: {user_plan.title()}\n"
 
     # Build product catalog section
     catalog_section = ""
     if business_type == "product":
         if show_products and products:
-            catalog_lines = ["## PRODUCT CATALOG:"]
+            catalog_lines = ["## 🛍️ PRODUCT CATALOG:"]
             for p in products[:30]:
                 p_name = p.get('name', '?')[:50]
                 sku = p.get('sku', '')
@@ -145,19 +159,12 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
                 catalog_lines.append(f"  ...and {len(products) - 30} more products")
             catalog_section = "\n".join(catalog_lines)
         elif user_plan == "starter":
-            catalog_section = "## PRODUCTS: Locked for Starter plan. Guide customers to service/contact info or suggest upgrade to Growth plan for product details."
+            catalog_section = "## PRODUCTS: Locked for Starter plan. Guide customers to contact info or suggest upgrade to Growth plan for product details."
         else:
             catalog_section = "## PRODUCTS: No product data available. Focus on services and contact info."
     else:
-        # Service mode: Products are not relevant
-        catalog_section = "## MODE: SERVICE BASED. Focus ONLY on providing info about our services and contact details."
-
-    # Build contact section
-    site_name = contact.get('site_name', 'our business')
-    contact_section = (f"## CONTACT INFO for {site_name}:\n"
-                       f"- Phone: {contact.get('phone', 'Refer to our website')}\n"
-                       f"- Email: {contact.get('email', 'Refer to our website')}\n"
-                       f"- Address: {contact.get('address', 'Refer to our website')}")
+        # Service mode: Products are not relevant - emphasize services
+        catalog_section = "## 🛠️ SERVICE MODE: Focus on providing information about SERVICES, CONTACT DETAILS, BUSINESS HOURS, and LOCATION. No product catalog available."
 
     # Build system prompt: user's custom prompt + website data
     user_prompt = prompt.strip() if prompt else ""
@@ -191,11 +198,13 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
 
 ## RULES:
 - Source of Truth: ONLY use the info provided above. NEVER make up products, prices, or details.
-- Searching: If the user asks for a specific product, SEARCH the ## PRODUCT CATALOG section above. If you find matches, list them with prices.
-- Accuracy: If asked about contact details or services, use the EXACT info from the sections above.
+- CONTACT INFO: When asked about phone, email, address, or hours - use the ## CONTACT INFO section above.
+- SERVICES: When asked about services - use the ## SERVICES section above. List them clearly.
+- PRODUCT SEARCH: If user asks for a specific product, SEARCH the ## PRODUCT CATALOG section. List matches with prices.
+- SERVICE BUSINESS: If business_type is SERVICE, focus ONLY on services, contact, address, hours - NO products.
 - Short & Sweet: Keep replies under 3 lines. This is WhatsApp.
 - Tone: Professional, helpful, and concise.
-- Website-Based Answers: Always refer to the website info provided. If info is missing, say you'll have a human contact them.
+- Missing Info: If contact details show "Available on website", politely offer to have a human contact them.
 - Order Flow: If they want to order/hire, ask: Item → Quantity → Name → Address.
 - Starter Plan: For product questions, mention service options or suggest upgrade.
 {lang_instruction}"""

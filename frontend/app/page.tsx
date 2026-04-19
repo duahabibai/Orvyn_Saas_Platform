@@ -19,7 +19,7 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; titl
   </div>
 );
 
-const PricingCard = ({ tier, price, description, features, cta, popular }: { tier: string; price: string; description: string; features: string[]; cta: string; popular?: boolean }) => (
+const PricingCard = ({ tier, price, description, features, cta, popular, link = "/signup" }: { tier: string; price: string; description: string; features: string[]; cta: string; popular?: boolean, link?: string }) => (
   <div className={`relative p-8 rounded-2xl border ${popular ? 'bg-slate-900 border-slate-800 text-white scale-105 shadow-2xl' : 'bg-white border-slate-100 text-slate-900 shadow-lg'}`}>
     {popular && (
       <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide">
@@ -42,7 +42,7 @@ const PricingCard = ({ tier, price, description, features, cta, popular }: { tie
         </li>
       ))}
     </ul>
-    <Link href="/signup" className={`block w-full py-3 px-6 rounded-xl text-center font-semibold transition-all ${popular ? 'bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}>
+    <Link href={link} className={`block w-full py-3 px-6 rounded-xl text-center font-semibold transition-all ${popular ? 'bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white'}`}>
       {cta}
     </Link>
   </div>
@@ -117,8 +117,8 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-3 gap-8 max-w-2xl mx-auto">
             <StatCard value="10K+" label="Messages Automated" />
-            <StatCard value="98%" Label="Response Rate" />
-            <StatCard value="24/7" Label="Uptime" />
+            <StatCard value="98%" label="Response Rate" />
+            <StatCard value="24/7" label="Uptime" />
           </div>
         </div>
       </header>
@@ -186,40 +186,6 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24 px-6 bg-slate-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">Start free and upgrade as you grow. No hidden fees.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            <PricingCard
-              tier="Starter"
-              price="$0"
-              description="Perfect for testing the waters"
-              features={["1 WhatsApp number", "100 conversations/month", "Basic AI responses", "WooCommerce sync", "Email support"]}
-              cta="Start Free"
-            />
-            <PricingCard
-              tier="Professional"
-              price="$49"
-              description="For growing businesses"
-              features={["3 WhatsApp numbers", "2,000 conversations/month", "Advanced AI with context", "Real-time analytics", "Priority support", "Custom branding"]}
-              cta="Start Trial"
-              popular
-            />
-            <PricingCard
-              tier="Enterprise"
-              price="Custom"
-              description="For high-volume operations"
-              features={["Unlimited WhatsApp numbers", "Unlimited conversations", "Custom AI training", "Dedicated account manager", "24/7 phone support", "SLA guarantee", "White-label option"]}
-              cta="Contact Sales"
-            />
           </div>
         </div>
       </section>

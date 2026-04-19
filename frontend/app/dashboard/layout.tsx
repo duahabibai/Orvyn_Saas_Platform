@@ -115,9 +115,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="flex flex-col h-full">
           {/* Brand Logo */}
           <div className="p-8 pb-6 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="bg-[#2563EB] p-2 rounded-2xl shadow-xl shadow-blue-100 group-hover:scale-105 transition-all">
-                <img src="/logo.png" alt="ORVYN" className="w-8 h-8 object-contain brightness-0 invert" />
+            <Link href="/dashboard" className="flex items-center gap-4 group">
+              <div className="bg-[#2563EB] p-3 rounded-2xl shadow-xl shadow-blue-100 group-hover:scale-105 transition-all">
+                <img src="/logo.png" alt="ORVYN" className="w-12 h-12 object-contain brightness-0 invert" />
               </div>
               <div>
                 <span className="text-2xl font-black tracking-tight text-[#0F172A] platform-name">ORVYN</span>

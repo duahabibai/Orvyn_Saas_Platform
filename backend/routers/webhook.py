@@ -307,9 +307,9 @@ async def webhook_post(request: Request, db: Session = Depends(get_db)):
 
                 # CRITICAL: If cache is empty and we have a URL, refresh it SYNC once to ensure data for this reply
                 cache_needs_refresh = (
-                    not c.get("products") or
-                    not c.get("contact", {}).get("phone") or
                     not c.get("site_name") or
+                    not c.get("contact", {}).get("phone") or
+                    not c.get("services") or
                     c.get("last_updated") is None
                 )
 
@@ -318,13 +318,23 @@ async def webhook_post(request: Request, db: Session = Depends(get_db)):
                     try:
                         default_refresh(bot.id, woo_key, woo_secret, woo_url, "", wp_url, business_type=integ.business_type or "product")
                         c = _get_cache(bot.id)  # Get updated cache
-                        logger.info(f"✅ Cache refreshed: {len(c.get('products', []))} products, {len(c.get('services', []))} services")
+                        logger.info(f"✅ Cache refreshed: site_name={c.get('site_name')}, services={len(c.get('services', []))}, contact_phone={c.get('contact', {}).get('phone')}")
                     except Exception as sync_err:
                         logger.error(f"❌ Sync cache refresh failed: {sync_err}", exc_info=True)
 
                 products = c.get("products", [])
                 categories = c.get("categories", [])
-                contact_info = c.get("contact", {})
+                # Build complete contact info with all fields
+                contact_info = {
+                    "phone": c.get("phone", "") or c.get("contact", {}).get("phone", ""),
+                    "email": c.get("email", "") or c.get("contact", {}).get("email", ""),
+                    "address": c.get("address", "") or c.get("contact", {}).get("address", ""),
+                    "hours": c.get("hours", "") or c.get("contact", {}).get("hours", ""),
+                    "site_name": c.get("site_name", ""),
+                    "site_description": c.get("site_description", ""),
+                    "about": c.get("about", ""),
+                    "services": c.get("services", []),
+                }
 
                 logger.info(f"📦 Using cached data: {len(products)} products, {len(categories)} categories, business_type={integ.business_type}")
 

@@ -129,32 +129,101 @@ class UniversalWebsiteFetcher:
 
     @staticmethod
     def _extract_contact_info(html: str, soup: BeautifulSoup) -> dict:
-        contact = {"phone": "", "email": "", "address": ""}
+        contact = {"phone": "", "email": "", "address": "", "hours": ""}
         text = soup.get_text(separator=' ', strip=True)
-        
+
+        # Look for contact section specifically - expanded selectors
+        contact_sections = []
+        contact_patterns = r'contact|footer|info|address|store|about|team|company|corporate|headquarters|office'
+        for tag in soup.find_all(['div', 'section', 'footer', 'address', 'header'], class_=re.compile(contact_patterns, re.I)):
+            contact_sections.append(tag.get_text(separator=' ', strip=True))
+
+        # Also look for contact links
+        for link in soup.find_all('a', href=re.compile(r'contact|about|tel:|mailto:', re.I)):
+            contact_text = link.get_text(strip=True)
+            if contact_text and len(contact_text) > 3:
+                contact_sections.append(contact_text)
+
+        contact_text = ' '.join(contact_sections) if contact_sections else text
+
         # Phone - More robust regex to capture common formats
         phone_patterns = [
             r'[\+]?[0-9]{1,3}[\s\-]?\(?[0-9]{1,4}\)?[\s\- ]?[0-9]{1,4}[\s\- ]?[0-9]{1,9}', # International format, Pakistan format
             r'[0-9]{10,11}', # Simple 10-11 digit number
             r'0[0-9]{10}', # Pakistani mobile format
-            r'\+\(?[0-9]{1,3}\)?\s?(\d[\s-]?){6,}' # General international format
+            r'\+\(?[0-9]{1,3}\)?\s?(\d[\s-]?){6,}', # General international format
+            r'tel:[\+\d\s\-]+', # tel: links
         ]
         for pattern in phone_patterns:
-            phone_match = re.search(pattern, text)
+            phone_match = re.search(pattern, contact_text)
             if phone_match:
-                contact["phone"] = phone_match.group().strip()
+                phone = phone_match.group().strip()
+                # Clean up tel: prefix
+                phone = re.sub(r'^tel:', '', phone)
+                contact["phone"] = phone
                 break # Use the first one found
-        
-        # Email
-        email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
-        if email_match: contact["email"] = email_match.group()
 
-        # Address - Very basic, look for lines with multiple words and typical address keywords
-        # This is highly heuristic and likely to be inaccurate without more context
-        address_lines = [line.strip() for line in text.split('\n') if len(line.strip().split()) > 3 and any(kw in line.lower() for kw in ['street', 'road', 'avenue', 'lane', 'area', 'city', 'pakistan', 'pk'])]
-        if address_lines:
-            contact["address"] = ", ".join(address_lines[:2]) # Take first couple of lines as address
-            
+        # Also check for tel: links directly
+        if not contact["phone"]:
+            tel_link = soup.find('a', href=re.compile(r'^tel:', re.I))
+            if tel_link:
+                contact["phone"] = tel_link.get('href', '').replace('tel:', '').strip()
+
+        # Email - search in contact sections first, then full text
+        email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', contact_text)
+        if not email_match:
+            email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+        if email_match:
+            contact["email"] = email_match.group()
+
+        # Also check for mailto: links
+        if not contact["email"]:
+            mailto_link = soup.find('a', href=re.compile(r'^mailto:', re.I))
+            if mailto_link:
+                contact["email"] = mailto_link.get('href', '').replace('mailto:', '').strip()
+
+        # Address - Look for contact sections first with expanded keywords
+        address_found = False
+        address_keywords = ['street', 'road', 'avenue', 'lane', 'area', 'city', 'pakistan', 'pk', 'address', 'location',
+                           'boulevard', 'drive', 'court', 'place', 'suite', 'floor', 'building', 'plaza', 'center',
+                           'centre', 'block', 'phase', 'sector', 'town', 'country', 'zip', 'postal']
+
+        for section in contact_sections:
+            address_lines = [line.strip() for line in section.split('\n')
+                           if len(line.strip().split()) > 3
+                           and any(kw in line.lower() for kw in address_keywords)]
+            if address_lines:
+                contact["address"] = ", ".join(address_lines[:2])
+                address_found = True
+                break
+
+        if not address_found:
+            address_lines = [line.strip() for line in text.split('\n')
+                           if len(line.strip().split()) > 3
+                           and any(kw in line.lower() for kw in address_keywords)]
+            if address_lines:
+                contact["address"] = ", ".join(address_lines[:2])
+
+        # Business hours - look for timing patterns with expanded search
+        hours_patterns = [
+            r'(?i)(?:opening\s*(?:hours|times?)|business\s*hours?|working\s*hours?|hours[:\s]+)\s*[:\-]?\s*([a-z0-9\s,\-\:]+(?:am|pm|mon|tue|wed|thu|fri|sat|sun)+)',
+            r'(?i)(?:mon|tue|wed|thu|fri|sat|sun)[a-z\s]*[\d\s\-:am]+',
+            r'(?i)(?:9|10|8)\s*am?\s*[-–to]+\s*(?:5|6|pm)',  # e.g., "9am - 5pm"
+        ]
+        for pattern in hours_patterns:
+            hours_match = re.search(pattern, contact_text, re.IGNORECASE)
+            if hours_match:
+                contact["hours"] = hours_match.group(0).strip()[:100]
+                break
+
+        # Also look for hours in dedicated elements
+        if not contact["hours"]:
+            for tag in soup.find_all(['div', 'span', 'p'], class_=re.compile(r'hours|time|schedule', re.I)):
+                hours_text = tag.get_text(strip=True)
+                if re.search(r'(am|pm|mon|tue|wed|thu|fri|sat|sun)', hours_text, re.I):
+                    contact["hours"] = hours_text[:100]
+                    break
+
         logger.info(f"Extracted contact: {contact}")
         return contact
 
@@ -169,24 +238,54 @@ class UniversalWebsiteFetcher:
     @staticmethod
     def _extract_services(html: str, soup: BeautifulSoup) -> list:
         services = []
-        keywords = ['service', 'solution', 'offer', 'provide', 'expert', 'feature', 'specialize', 'package', 'plan']
-        for h in soup.find_all(['h2', 'h3', 'h4', 'li', 'a']): # Include 'a' tags for link-based services
+        # Expanded keywords for service detection
+        keywords = [
+            'service', 'solution', 'offer', 'provide', 'expert', 'feature',
+            'specialize', 'package', 'plan', 'product', 'category', 'section',
+            'department', 'program', 'support', 'help', 'guide', 'tutorial',
+            'resource', 'tool', 'platform', 'system', 'software', 'app'
+        ]
+
+        # Also look for navigation items and menu links
+        nav_items = []
+        for nav in soup.find_all(['nav', 'ul'], class_=re.compile(r'menu|nav|menu-item', re.I)):
+            for li in nav.find_all('li'):
+                nav_items.append(li.get_text(strip=True))
+
+        # Search in headings and links
+        for h in soup.find_all(['h2', 'h3', 'h4', 'h5', 'li', 'a']):
             t = h.get_text(strip=True)
-            if 5 < len(t) < 100: # Reasonable length for a service name
+            # Clean up whitespace and normalize
+            t = ' '.join(t.split())
+            if 5 < len(t) < 100:
+                # Check for keyword match
                 if any(k in t.lower() for k in keywords):
-                    if t not in services: # Avoid duplicates
-                        services.append(t)
-                        logger.debug(f"Potential service found: {t}")
-        
+                    # Filter out generic text
+                    if not any(generic in t.lower() for generic in ['click here', 'read more', 'learn more', 'view all']):
+                        if t not in services:
+                            services.append(t)
+                            logger.debug(f"Potential service found: {t}")
+
+        # Also extract from nav items (often contain service names)
+        for item in nav_items:
+            item = ' '.join(item.split())
+            if 5 < len(item) < 80 and item not in services:
+                if not any(generic in item.lower() for generic in ['home', 'contact', 'about', 'login', 'sign']):
+                    services.append(item)
+                    logger.debug(f"Potential service from nav: {item}")
+
         if not services:
             logger.warning("No services found using keywords. Trying generic headings.")
             # Fallback: look for any short, non-generic headings if no keywords matched
-            for h in soup.find_all(['h2', 'h3', 'h4']):
+            for h in soup.find_all(['h2', 'h3', 'h4', 'h5']):
                  t = h.get_text(strip=True)
-                 if 5 < len(t) < 100 and len(t.split()) < 5: # Short headings
-                     if t not in services:
-                        services.append(t)
-                        logger.debug(f"Potential service found (fallback): {t}")
+                 t = ' '.join(t.split())  # Normalize whitespace
+                 if 5 < len(t) < 100 and 2 <= len(t.split()) <= 6:  # Reasonable heading length
+                     # Filter generic headings
+                     if not any(generic in t.lower() for generic in ['welcome', 'latest', 'featured', 'popular']):
+                         if t not in services:
+                            services.append(t)
+                            logger.debug(f"Potential service found (fallback): {t}")
 
         final_services = services[:15] # Limit to 15 services
         logger.info(f"Extracted {len(final_services)} services.")

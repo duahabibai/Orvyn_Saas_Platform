@@ -50,7 +50,8 @@ def _get_cache(bot_id: int) -> dict:
         if bot_id not in _instance_caches:
             _instance_caches[bot_id] = {
                 "products": [], "categories": [], "contact": {},
-                "site_name": "", "services": [], "about": "",
+                "site_name": "", "site_description": "", "services": [], "about": "",
+                "hours": "", "address": "", "email": "", "phone": "",
                 "last_updated": None, "ttl": timedelta(minutes=30),
             }
         return _instance_caches[bot_id]
@@ -83,10 +84,18 @@ def refresh_cache(bot_id: int, woo_key: str, woo_secret: str, woo_url: str,
     with _cache_lock:
         c = _instance_caches.get(bot_id, {
             "products": [], "categories": [], "contact": {},
-            "site_name": "", "services": [], "about": "",
+            "site_name": "", "site_description": "", "services": [], "about": "",
+            "hours": "", "address": "", "email": "", "phone": "",
             "last_updated": None, "ttl": timedelta(minutes=30),
         })
         c.update(site_info)
+
+        # Flatten contact info for easy access
+        if c.get("contact"):
+            c["phone"] = c["contact"].get("phone", c.get("phone", ""))
+            c["email"] = c["contact"].get("email", c.get("email", ""))
+            c["address"] = c["contact"].get("address", c.get("address", ""))
+            c["hours"] = c["contact"].get("hours", c.get("hours", ""))
 
         # Fetch products ONLY for product-based businesses
         if business_type == "product":
@@ -337,9 +346,9 @@ def process(bot_id: int, text: str, phone: str, name: str, business_type: str = 
         if not context_changed:
             logger.info(f"🧭 Bot state - Step: {st.get('step')}, Language: {lang}, Input: '{text[:30]}'")
 
-        # 2. Get Site Data
+        # 2. Get Site Data - ensure contact info is complete
         c = _get_cache(bot_id)
-        if not c.get("last_updated"):
+        if not c.get("last_updated") or not c.get("site_name") or not c.get("contact", {}).get("phone"):
             from models import Integration
             integ = db.query(Integration).filter(Integration.bot_id == bot_id).first()
             if integ:

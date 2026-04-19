@@ -51,7 +51,7 @@ export default function IntegrationsPage() {
   const [activeTab, setActiveTab] = useState<"whatsapp" | "website" | "button">("whatsapp");
   const { showToast, ToastContainer } = useToast();
 
-  const apiUrl = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'http://localhost:8000' : window.location.origin) : '';
+  const apiUrl = typeof window !== 'undefined' ? 'https://orvyn-saas-platform.onrender.com' : '';
   const webhookUrl = `${apiUrl}/webhook`;
 
   useEffect(() => {
@@ -110,13 +110,13 @@ export default function IntegrationsPage() {
         const payload = {
             integration_type: integrationType,
             website_url: ecommerceForm.website_url,
-            consumer_key: integrationType === 'product' ? ecommerceForm.consumer_key : undefined,
-            consumer_secret: integrationType === 'product' ? ecommerceForm.consumer_secret : undefined,
+            consumer_key: integrationType === 'product' ? ecommerceForm.consumer_key : "",
+            consumer_secret: integrationType === 'product' ? ecommerceForm.consumer_secret : "",
         };
-        await apiPost("/api/integrations/me/configure-base", payload);
-        const msg = integrationType === "product"
+        const result = await apiPost("/api/integrations/me/configure-base", payload);
+        const msg = result.message || (integrationType === "product"
             ? "Product integration configured successfully!"
-            : "Service integration configured successfully! WhatsApp will now use your website data.";
+            : "Service integration configured successfully! WhatsApp will now use your website data.");
         showToast(msg, "success");
         apiGet<IntegrationData>("/api/integrations/me").then(setInteg).catch(console.error);
     } catch (err: any) {
@@ -319,10 +319,10 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-slate-600">
-                    {integ.webhook_url || "http://localhost:8000/webhook"}
+                    https://orvyn-saas-platform.onrender.com/webhook
                   </code>
                   <button
-                    onClick={() => copyToClipboard(integ.webhook_url || "http://localhost:8000/webhook", "Webhook URL")}
+                    onClick={() => copyToClipboard("https://orvyn-saas-platform.onrender.com/webhook", "Webhook URL")}
                     className="px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition"
                   >
                     Copy
