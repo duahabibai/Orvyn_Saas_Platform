@@ -8,7 +8,8 @@
       "Bash(python tests/debug_contact.py)",
       "Bash(python backend/tests/test_predefined_mode.py)",
       "Bash(curl *)",
-      "Bash(python main.py)"
+      "Bash(python main.py)",
+      "Bash(npm run *)"
     ]
   }
 }

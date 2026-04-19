@@ -19,12 +19,7 @@ app = FastAPI(title=settings.APP_NAME, version="2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        'http://localhost:3003',
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002',
-        'https://orvyn-saas-platform.onrender.com',  # Production frontend
-        'https://orvyn.onrender.com',  # Production frontend (alternate)
+        "https://orvynlabs.brandlessdigital.com",  # Production frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
