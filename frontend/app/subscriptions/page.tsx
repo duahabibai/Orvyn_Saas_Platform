@@ -31,7 +31,7 @@ const PLANS = {
       { text: "Basic Website Content Fetch", included: true },
       { text: "Limited Predefined Templates", included: true },
       { text: "AI Bot Integration (Your API Key)", included: true },
-      { text: "Up to 200 Conversations/Month", included: true },
+      { text: "Up to 500 Conversations/Month", included: true },
       { text: "Basic Lead Capture", included: true },
       { text: "Test Mode (Sandbox)", included: true },
       { text: "Basic Dashboard", included: true },

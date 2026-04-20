@@ -118,9 +118,9 @@ export default function IntegrationsPage() {
         showToast("Website URL is required.", "warning");
         return;
     }
-    // Block product integration for FREE users only - Starter and Growth can use products
+    // Block product integration for FREE users only
     if (userPlan === 'free' && integrationType === 'product') {
-        showToast("⚠️ Product features require Starter or Growth plan. Upgrade to unlock product features.", "warning");
+        showToast("⚠️ WooCommerce integration requires a Starter or Growth plan.", "warning");
         return;
     }
     setSavingEcommerce(true);
