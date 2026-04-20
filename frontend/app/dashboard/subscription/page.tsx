@@ -14,16 +14,16 @@ interface Usage {
 }
 
 const PLANS = {
-  starter: {
-    name: "Starter",
-    price: "$1",
+  free: {
+    name: "Free",
+    price: "$0",
     period: "/month",
-    color: "amber",
-    gradient: "from-amber-500 to-orange-500",
-    bg: "bg-amber-50",
-    border: "border-amber-200",
-    text: "text-amber-700",
-    button: "bg-amber-500 hover:bg-amber-600",
+    color: "slate",
+    gradient: "from-slate-500 to-gray-500",
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+    text: "text-slate-700",
+    button: "bg-slate-500 hover:bg-slate-600",
     features: [
       { text: "WhatsApp Bot Access", included: true },
       { text: "Service-based Flows Only", included: true },
@@ -40,9 +40,38 @@ const PLANS = {
       { text: "Product Listing / Search", included: false },
       { text: "Live Chat Takeover", included: false },
       { text: "Multi-language Support", included: false },
-      { text: "Advanced Automation", included: false },
       { text: "Advanced Analytics", included: false },
       { text: "Unlimited Templates", included: false },
+      { text: "User Tagging", included: false },
+      { text: "Broadcast Campaigns", included: false },
+    ],
+  },
+  starter: {
+    name: "Starter",
+    price: "$1",
+    period: "/month",
+    color: "amber",
+    gradient: "from-amber-500 to-orange-500",
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    text: "text-amber-700",
+    button: "bg-amber-500 hover:bg-amber-600",
+    features: [
+      { text: "Everything in Free Plan", included: true },
+      { text: "Product + Service Flows (Both)", included: true },
+      { text: "WooCommerce Integration (10 Products)", included: true },
+      { text: "Product Listing + Search", included: true },
+      { text: "Advanced Website Learning", included: true },
+      { text: "Unlimited Templates", included: true },
+      { text: "Smart AI Responses", included: true },
+      { text: "Up to 500 Conversations/Month", included: true },
+      { text: "Basic Automation Funnel", included: true },
+      { text: "User Tagging", included: true },
+      { text: "Basic Broadcast Campaigns", included: true },
+      { text: "Multi-language Support", included: false },
+      { text: "Live Chat Takeover", included: false },
+      { text: "Advanced Dashboard", included: false },
+      { text: "Priority Support", included: false },
     ],
   },
   growth: {
@@ -58,9 +87,9 @@ const PLANS = {
     popular: true,
     features: [
       { text: "Everything in Starter", included: true },
-      { text: "Product + Service Flows (Both)", included: true },
-      { text: "WooCommerce Integration Enabled", included: true },
-      { text: "Product Listing + Search", included: true },
+      { text: "Product + Service Flows (Full Access)", included: true },
+      { text: "WooCommerce Integration (Unlimited)", included: true },
+      { text: "Product Listing + Search (Unlimited)", included: true },
       { text: "Advanced Website Learning", included: true },
       { text: "Unlimited Templates", included: true },
       { text: "Smart AI Responses", included: true },
@@ -80,6 +109,7 @@ export default function SubscriptionPage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [downgrading, setDowngrading] = useState(false);
   const { showToast, ToastContainer } = useToast();
 
   useEffect(() => {
@@ -89,15 +119,13 @@ export default function SubscriptionPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (targetPlan: "starter" | "growth") => {
     setUpgrading(true);
     try {
-      const response = await apiPost("/api/auth/upgrade-plan", {});
-      console.log("Upgrade response:", response);
-      showToast("Successfully upgraded to Growth plan!", "success");
+      const response = await apiPost("/api/auth/upgrade-plan", { plan: targetPlan });
+      showToast(`Successfully upgraded to ${targetPlan === 'starter' ? 'Starter' : 'Growth'} plan!`, "success");
       apiGet<Usage>("/api/auth/usage").then(setUsage).catch(console.error);
     } catch (err: any) {
-      console.error("Upgrade error:", err);
       const errorMsg = err.message || err.response?.data?.message || "Failed to upgrade plan";
       showToast(errorMsg, "error");
     } finally {
@@ -105,16 +133,20 @@ export default function SubscriptionPage() {
     }
   };
 
-  const handleDowngrade = async () => {
-    if (!confirm("Are you sure you want to downgrade to Starter? You will lose access to Growth features.")) return;
+  const handleDowngradeTo = async (targetPlan: "free" | "starter") => {
+    if (!confirm(`Are you sure you want to downgrade to ${targetPlan === 'free' ? 'Free' : 'Starter'}? You will lose access to paid features.`)) return;
+    setDowngrading(true);
     try {
-      await apiPost("/api/auth/downgrade-plan", {});
-      showToast("Downgraded to Starter plan", "success");
+      await apiPost("/api/auth/downgrade-plan", { plan: targetPlan });
+      showToast(`Downgraded to ${targetPlan === 'free' ? 'Free' : 'Starter'} plan`, "success");
       apiGet<Usage>("/api/auth/usage").then(setUsage).catch(console.error);
     } catch (err: any) {
       showToast(err.message || "Failed to downgrade", "error");
+    } finally {
+      setDowngrading(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -127,7 +159,7 @@ export default function SubscriptionPage() {
     );
   }
 
-  const currentPlan = usage?.plan || "starter";
+  const currentPlan = usage?.plan || "free";
   const resetDate = usage?.reset_date
     ? new Date(usage.reset_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'End of billing cycle';
@@ -144,7 +176,9 @@ export default function SubscriptionPage() {
           <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-semibold">
             <span className="text-slate-500">Current Plan:</span>
             <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${
-              currentPlan === 'starter'
+              currentPlan === 'free'
+                ? 'bg-slate-100 text-slate-700'
+                : currentPlan === 'starter'
                 ? 'bg-amber-100 text-amber-700'
                 : 'bg-emerald-100 text-emerald-700'
             }`}>
@@ -194,9 +228,63 @@ export default function SubscriptionPage() {
       )}
 
       {/* Plan Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {/* Free Plan */}
+        <div className={`premium-card rounded-[2.5rem] p-10 bg-white border-2 ${currentPlan === 'free' ? 'border-slate-400 shadow-2xl shadow-slate-100' : 'border-slate-100'} relative overflow-hidden`}>
+          {currentPlan === 'free' && (
+            <div className="absolute top-6 right-6 px-4 py-2 bg-slate-500 text-white text-xs font-black uppercase tracking-widest rounded-full">
+              Current Plan
+            </div>
+          )}
+          <div className="mb-8">
+            <div className="flex items-baseline gap-1 mb-2">
+              <span className="text-5xl font-black text-slate-900">{PLANS.free.price}</span>
+              <span className="text-slate-500 font-medium">{PLANS.free.period}</span>
+            </div>
+            <h3 className="text-2xl font-black text-slate-900">{PLANS.free.name}</h3>
+            <p className="text-slate-500 text-sm font-medium mt-1">Perfect for testing and beginners</p>
+          </div>
+
+          <ul className="space-y-4 mb-10">
+            {PLANS.free.features.map((feature, idx) => (
+              <li key={idx} className="flex items-start gap-3">
+                <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  feature.included ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {feature.included ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm font-medium ${feature.included ? 'text-slate-700' : 'text-slate-400 line-through'}`}>
+                  {feature.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {currentPlan === 'free' ? (
+            <button disabled className="w-full py-4 bg-slate-100 text-slate-400 font-black rounded-2xl cursor-not-allowed">
+              CURRENT PLAN
+            </button>
+          ) : (
+            <button
+              onClick={() => handleDowngradeTo("free")}
+              disabled={downgrading}
+              className="w-full py-4 bg-slate-100 text-slate-700 font-black rounded-2xl hover:bg-slate-200 transition-colors disabled:opacity-50"
+            >
+              {downgrading ? 'Processing...' : 'Downgrade to Free'}
+            </button>
+          )}
+        </div>
+
         {/* Starter Plan */}
-        <div className={`premium-card rounded-[2.5rem] p-10 bg-white border-2 ${currentPlan === 'starter' ? 'border-amber-500 shadow-2xl shadow-amber-100' : 'border-slate-100'} relative overflow-hidden`}>
+        <div className={`premium-card rounded-[2.5rem] p-10 bg-white border-2 ${currentPlan === 'starter' ? 'border-amber-500 shadow-2xl shadow-amber-100' : 'border-amber-200'} relative overflow-hidden`}>
           {currentPlan === 'starter' && (
             <div className="absolute top-6 right-6 px-4 py-2 bg-amber-500 text-white text-xs font-black uppercase tracking-widest rounded-full">
               Current Plan
@@ -208,7 +296,7 @@ export default function SubscriptionPage() {
               <span className="text-slate-500 font-medium">{PLANS.starter.period}</span>
             </div>
             <h3 className="text-2xl font-black text-slate-900">{PLANS.starter.name}</h3>
-            <p className="text-slate-500 text-sm font-medium mt-1">Perfect for small businesses getting started</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">For small businesses getting started</p>
           </div>
 
           <ul className="space-y-4 mb-10">
@@ -238,13 +326,21 @@ export default function SubscriptionPage() {
             <button disabled className="w-full py-4 bg-slate-100 text-slate-400 font-black rounded-2xl cursor-not-allowed">
               CURRENT PLAN
             </button>
+          ) : currentPlan === 'free' ? (
+            <button
+              onClick={() => handleUpgrade("starter")}
+              disabled={upgrading}
+              className="w-full py-4 bg-amber-500 text-white font-black rounded-2xl hover:bg-amber-600 transition-all disabled:opacity-50 shadow-lg shadow-amber-200"
+            >
+              {upgrading ? 'Upgrading...' : 'Upgrade to Starter'}
+            </button>
           ) : (
             <button
-              onClick={handleDowngrade}
-              disabled={upgrading}
-              className="w-full py-4 bg-amber-100 text-amber-700 font-black rounded-2xl hover:bg-amber-200 transition-colors disabled:opacity-50"
+              onClick={() => handleDowngradeTo("starter")}
+              disabled={downgrading}
+              className="w-full py-4 bg-slate-100 text-slate-700 font-black rounded-2xl hover:bg-slate-200 transition-colors disabled:opacity-50"
             >
-              {upgrading ? 'Processing...' : 'Downgrade to Starter'}
+              {downgrading ? 'Processing...' : 'Downgrade to Starter'}
             </button>
           )}
         </div>
@@ -267,7 +363,7 @@ export default function SubscriptionPage() {
               <span className="text-slate-500 font-medium">{PLANS.growth.period}</span>
             </div>
             <h3 className="text-2xl font-black text-emerald-600">{PLANS.growth.name}</h3>
-            <p className="text-slate-500 text-sm font-medium mt-1">For growing businesses that need more power</p>
+            <p className="text-slate-500 text-sm font-medium mt-1">For scaling businesses</p>
           </div>
 
           <ul className="space-y-4 mb-10">
@@ -289,9 +385,9 @@ export default function SubscriptionPage() {
             </button>
           ) : (
             <button
-              onClick={handleUpgrade}
+              onClick={() => handleUpgrade("growth")}
               disabled={upgrading}
-              className={`w-full py-4 ${PLANS.growth.button} text-white font-black rounded-2xl transition-all disabled:opacity-50`}
+              className={`w-full py-4 ${PLANS.growth.button} text-white font-black rounded-2xl transition-all disabled:opacity-50 shadow-lg shadow-emerald-200`}
             >
               {upgrading ? 'Upgrading...' : 'Upgrade to Growth'}
             </button>
@@ -300,7 +396,7 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Feature Comparison Table */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden max-w-5xl mx-auto mt-12">
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden max-w-6xl mx-auto mt-12">
         <div className="p-8 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-blue-50">
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Feature Comparison</h2>
           <p className="text-slate-500 text-sm font-medium mt-1">Detailed breakdown of what's included in each plan</p>
@@ -309,33 +405,35 @@ export default function SubscriptionPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50">
-                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Feature</th>
-                <th className="px-8 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Starter</th>
-                <th className="px-8 py-5 text-center text-[10px] font-black text-emerald-600 uppercase tracking-widest">Growth</th>
+                <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Feature</th>
+                <th className="px-6 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Free</th>
+                <th className="px-6 py-5 text-center text-[10px] font-black text-amber-700 uppercase tracking-widest">Starter</th>
+                <th className="px-6 py-5 text-center text-[10px] font-black text-emerald-600 uppercase tracking-widest">Growth</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {[
-                { feature: "WhatsApp Messages/Month", starter: "200", growth: "1500" },
-                { feature: "AI Requests/Month", starter: "200", growth: "1500" },
-                { feature: "Product-based Flows", starter: false, growth: true },
-                { feature: "Service-based Flows", starter: true, growth: true },
-                { feature: "WooCommerce Integration", starter: false, growth: true },
-                { feature: "Product Listing & Search", starter: false, growth: true },
-                { feature: "Predefined Rules", starter: "Limited (10)", growth: "Unlimited" },
-                { feature: "Templates", starter: "Limited", growth: "Unlimited" },
-                { feature: "Multi-language Support", starter: false, growth: true },
-                { feature: "Live Chat Takeover", starter: false, growth: true },
-                { feature: "Broadcast Campaigns", starter: false, growth: true },
-                { feature: "User Tagging", starter: false, growth: true },
-                { feature: "Advanced Analytics", starter: false, growth: true },
-                { feature: "Support", starter: "Email", growth: "Priority" },
+                { feature: "Price", free: "$0/mo", starter: "$1/mo", growth: "$3/mo" },
+                { feature: "WhatsApp Messages/Month", free: "200", starter: "500", growth: "1500" },
+                { feature: "AI Requests/Month", free: "200", starter: "500", growth: "1500" },
+                { feature: "Product-based Flows", free: false, starter: true, growth: true },
+                { feature: "Service-based Flows", free: true, starter: true, growth: true },
+                { feature: "WooCommerce Integration", free: false, starter: "10 products", growth: "Unlimited" },
+                { feature: "Product Listing & Search", free: false, starter: true, growth: true },
+                { feature: "Predefined Rules", free: "Limited (10)", starter: "Unlimited", growth: "Unlimited" },
+                { feature: "Templates", free: "Limited", starter: "Unlimited", growth: "Unlimited" },
+                { feature: "Multi-language Support", free: false, starter: false, growth: true },
+                { feature: "Live Chat Takeover", free: false, starter: false, growth: true },
+                { feature: "Broadcast Campaigns", free: false, starter: "Basic", growth: "Advanced" },
+                { feature: "User Tagging", free: false, starter: true, growth: true },
+                { feature: "Advanced Analytics", free: false, starter: false, growth: true },
+                { feature: "Support", free: "Email", starter: "Email", growth: "Priority" },
               ].map((row, idx) => (
                 <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-8 py-5 text-sm font-semibold text-slate-700">{row.feature}</td>
-                  <td className="px-8 py-5 text-center">
-                    {typeof row.starter === 'boolean' ? (
-                      row.starter ? (
+                  <td className="px-6 py-5 text-sm font-semibold text-slate-700">{row.feature}</td>
+                  <td className="px-6 py-5 text-center">
+                    {typeof row.free === 'boolean' ? (
+                      row.free ? (
                         <svg className="w-5 h-5 mx-auto text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                         </svg>
@@ -345,10 +443,25 @@ export default function SubscriptionPage() {
                         </svg>
                       )
                     ) : (
-                      <span className="text-sm font-medium text-slate-600">{row.starter}</span>
+                      <span className="text-sm font-medium text-slate-600">{row.free}</span>
                     )}
                   </td>
-                  <td className="px-8 py-5 text-center">
+                  <td className="px-6 py-5 text-center">
+                    {typeof row.starter === 'boolean' ? (
+                      row.starter ? (
+                        <svg className="w-5 h-5 mx-auto text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 mx-auto text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )
+                    ) : (
+                      <span className="text-sm font-medium text-amber-600">{row.starter}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-5 text-center">
                     {typeof row.growth === 'boolean' ? (
                       row.growth ? (
                         <svg className="w-5 h-5 mx-auto text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

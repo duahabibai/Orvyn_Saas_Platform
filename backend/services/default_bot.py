@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def get_user_plan(user_id: int) -> str:
     """
     Get user plan from database.
-    Returns 'starter' or 'growth'.
+    Returns 'free', 'starter', or 'growth'.
     """
     from database import SessionLocal
     from models import User
@@ -26,11 +26,11 @@ def get_user_plan(user_id: int) -> str:
     try:
         user = db.query(User).filter(User.id == user_id).first()
         if user:
-            return user.plan or "starter"
-        return "starter"
+            return user.plan or "free"
+        return "free"
     except Exception as e:
         logger.error(f"Error fetching user plan: {e}")
-        return "starter"
+        return "free"
     finally:
         db.close()
 
@@ -308,7 +308,8 @@ def _search_products(query, products, lang):
 
 # ===================== LOGIC =====================
 
-PLAN_ERROR = "⚠️ This feature is available in Growth plan. Please upgrade."
+PLAN_ERROR_FREE = "⚠️ Product features are not available in Free plan. Please upgrade to Starter or Growth plan."
+PRODUCT_LIMIT_WARNING = "📦 *Starter Plan Limit*: Showing first 10 products. Upgrade to Growth for unlimited products."
 
 def process(bot_id: int, text: str, phone: str, name: str, business_type: str = "product", user_plan: str = "starter"):
     from models import Lead
@@ -407,26 +408,27 @@ def process(bot_id: int, text: str, phone: str, name: str, business_type: str = 
                 return get_language_selection()
 
         # Step: Active (Menu) - with plan-based feature gating
+        # Free plan = service only, Starter/Growth = product + service
         if st.get("step") == "active":
             # 1. Handle Order / Place Order / Booking
             if tl in ["1", "1️⃣", "order", "buy", "place order", "book", "booking"]:
-                if user_plan == "starter" and business_type == "product":
-                    return PLAN_ERROR
-                
+                if user_plan == "free" and business_type == "product":
+                    return PLAN_ERROR_FREE
+
                 new_st = dict(st)
                 new_st.update({"step": "sales_product", "unrecognized_inputs": 0})
                 lead.context = new_st
                 db.commit()
                 db.refresh(lead)
-                
+
                 if business_type == "service":
                     return "🛠️ *Service Booking*\n\nWhich service are you interested in? Please type the service name." if lang == "english" else "🛠️ *Service Booking*\n\nAap konsi service lena chahte hain? Meherbani farmakar naam likhein."
                 return "🛒 *Place Your Order*\n\nWhich product would you like to buy? (Enter Name or Code)" if lang == "english" else "🛒 *Order Karein*\n\nAap konsi cheez kharidna chahte hain? (Naam ya Code likhein)"
 
             # 2. Handle Inquiry / Pricing
             if tl in ["2", "2️⃣", "inquiry", "price", "pricing"]:
-                if business_type == "product" and user_plan == "starter":
-                    return PLAN_ERROR
+                if user_plan == "free" and business_type == "product":
+                    return PLAN_ERROR_FREE
                 
                 new_st = dict(st)
                 new_st["unrecognized_inputs"] = 0
@@ -440,9 +442,20 @@ def process(bot_id: int, text: str, phone: str, name: str, business_type: str = 
                 products = c.get("products", [])
                 if not products:
                     return "⚠️ No products found. Please check back later or contact us directly."
-                
-                items = [f"• {p.get('name', 'Product')} - {p.get('price', 'Contact')}" for p in products[:15]]
-                return _t_all_products(items, len(products), lang)
+
+                # Apply plan-based product limits
+                if user_plan == "starter":
+                    # Starter plan: limit to 10 products
+                    display_products = products[:10]
+                    warning = PRODUCT_LIMIT_WARNING if len(products) > 10 else ""
+                else:
+                    # Free (no products) or Growth (unlimited)
+                    display_products = products[:15] if user_plan == "free" else products
+                    warning = ""
+
+                items = [f"• {p.get('name', 'Product')} - {p.get('price', 'Contact')}" for p in display_products]
+                result = _t_all_products(items, len(display_products), lang)
+                return result + ("\n\n" + warning if warning else "")
 
             # 3. Handle Delivery Information OR About Us
             if tl in ["3", "3️⃣", "delivery", "shipping", "about", "info"]:

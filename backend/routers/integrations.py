@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 
 
-PLAN_ERROR = "⚠️ This feature is available in Growth plan. Please upgrade."
+PLAN_ERROR_FREE = "⚠️ Product features are not available in Free plan. Please upgrade to Starter or Growth plan."
 
 def get_current_user_id(request: Request) -> int:
     auth = request.headers.get("Authorization", "")
@@ -97,16 +97,16 @@ def update_integrations(data: IntegrationUpdate, user_id: int = Depends(get_curr
     if not integ:
         raise HTTPException(404, "Integrations not found")
 
-    # Plan-based feature gating: Block WooCommerce for starter users
+    # Plan-based feature gating: Free plan = service only, Starter/Growth = product + service
     user_plan = get_user_plan(user_id, db)
-    if user_plan == "starter":
-        # Check if user is trying to set product-related fields
+    if user_plan == "free":
+        # Free plan: only service-based integrations allowed
         if data.business_type == "product":
-            raise HTTPException(403, PLAN_ERROR)
+            raise HTTPException(403, PLAN_ERROR_FREE)
         if data.woocommerce_url and data.woocommerce_url.strip() != "":
-            raise HTTPException(403, PLAN_ERROR)
+            raise HTTPException(403, PLAN_ERROR_FREE)
         if data.woo_consumer_key or data.woo_consumer_secret:
-            raise HTTPException(403, PLAN_ERROR)
+            raise HTTPException(403, PLAN_ERROR_FREE)
 
     # Track if website URL or type changed - if so, clear old cached data
     old_url = integ.woocommerce_url
@@ -269,10 +269,10 @@ def fetch_woocommerce_data(user_id: int = Depends(get_current_user_id), db: Sess
     """
     from models import Bot
 
-    # Plan-based gating: Block WooCommerce fetch for starter users
+    # Plan-based gating: Free plan cannot fetch WooCommerce products
     user_plan = get_user_plan(user_id, db)
-    if user_plan == "starter":
-        raise HTTPException(403, PLAN_ERROR)
+    if user_plan == "free":
+        raise HTTPException(403, PLAN_ERROR_FREE)
 
     integ = db.query(Integration).join(Integration.bot).filter(Bot.user_id == user_id).first()
     if not integ:
@@ -369,11 +369,11 @@ async def configure_integration_base(
     """
     Configures integration base for product or service, fetching relevant data.
     """
-    # Plan-based gating: Block product integration for starter users
+    # Plan-based gating: Free plan cannot configure product integration
     user_plan = get_user_plan(user_id, db)
-    if user_plan == "starter":
+    if user_plan == "free":
         if integration_config.get("integration_type") == "product":
-            raise HTTPException(403, PLAN_ERROR)
+            raise HTTPException(403, PLAN_ERROR_FREE)
 
     integ = db.query(Integration).join(Integration.bot).filter(Bot.user_id == user_id).first()
     if not integ:

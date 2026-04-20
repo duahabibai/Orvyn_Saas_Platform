@@ -10,8 +10,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), default="user")  # admin, user
-    plan = Column(String(20), default="starter")  # starter, growth
+    role = Column(String(20), default="user")  # super_admin, admin, user
+    plan = Column(String(20), default="free")  # free, starter, growth
     full_name = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

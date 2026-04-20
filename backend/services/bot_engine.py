@@ -4,7 +4,7 @@ Bot Engine — Intelligent Routing with Plan-based Feature Gating
 import re
 import logging
 from typing import Optional
-from .default_bot import process as default_process, _t_all_products, _get_contact_info, _get_services
+from .default_bot import process as default_process, _t_all_products, _get_contact_info, _get_services, PRODUCT_LIMIT_WARNING
 from .ai_service import ai_reply
 
 logger = logging.getLogger(__name__)
@@ -58,13 +58,18 @@ def handle_message(bot_mode: str, bot_id: int, text: str, phone: str, name: str,
                 final = response.replace("{name}", name or "Customer").replace("{phone}", phone).replace("{last_message}", text)
                 return final
 
-        # Product feature gating
+        # Product feature gating - Free plan restricted, Starter/Growth have access
         if _is_product_query(text, categories):
-            if user_plan == "starter":
-                return PLAN_ERROR
+            if user_plan == "free":
+                return "⚠️ Product features are not available in Free plan. Please upgrade to Starter or Growth plan."
             if products:
-                items = [f"• {p.get('name','')} - {p.get('price','Contact')} PKR" for p in products[:10]]
-                return _t_all_products(items, len(products), lang)
+                # Apply product limit for Starter plan
+                display_count = 10 if user_plan == "starter" else len(products)
+                items = [f"• {p.get('name','')} - {p.get('price','Contact')} PKR" for p in products[:display_count]]
+                result = _t_all_products(items, len(products), lang)
+                if user_plan == "starter" and len(products) > 10:
+                    result += "\n\n" + PRODUCT_LIMIT_WARNING
+                return result
 
         if _is_website_query(text):
             if "service" in tl or business_type == "service":

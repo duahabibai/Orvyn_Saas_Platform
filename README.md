@@ -1,4 +1,4 @@
-# WhatsApp Bot SaaS Platform
+# WhatsApp Bot SaaS Platform (ORVYN)
 
 Multi-tenant WhatsApp bot platform with AI assistant, WooCommerce integration, and dashboard.
 
@@ -21,8 +21,18 @@ project/
 │   └── requirements.txt    # Python dependencies
 ├── frontend/               # Next.js dashboard
 │   ├── app/                # Pages and routes
+│   │   ├── (auth)/         # Auth route group (login, signup)
+│   │   ├── dashboard/      # User dashboard pages
+│   │   └── not-found.tsx   # Custom 404 page
 │   ├── components/         # React components
-│   └── lib/                # Utilities
+│   ├── lib/                # Utilities (API client)
+│   ├── public/             # Static assets
+│   ├── out/                # Production build output
+│   ├── next.config.js      # Next.js configuration
+│   ├── vercel.json         # Vercel deployment config
+│   ├── netlify.toml        # Netlify deployment config
+│   └── package.json        # Dependencies & scripts
+├── frontend/ftp-deploy/    # FileZilla FTP deployment configs
 ├── .env.example            # Environment variables template
 └── docker-compose.yml      # Docker setup
 ```
@@ -37,12 +47,20 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend
+### Frontend (Development)
 
 ```bash
 cd frontend
 npm install
 npm run dev
+```
+
+### Frontend (Production Build)
+
+```bash
+cd frontend
+npm run build        # Creates static export in out/
+npm run preview      # Preview production build locally
 ```
 
 ### Docker (All-in-one)
@@ -107,3 +125,39 @@ python -m pytest
 - **Database errors**: Check `DATABASE_URL` in `.env`
 - **Webhook not receiving**: Ensure ngrok is running and URL is updated in Meta
 - **Frontend not connecting**: Verify `NEXT_PUBLIC_API_URL` in `frontend/.env.local`
+- **404 on direct page access**: Ensure server has proper rewrite rules (see `frontend/DEPLOYMENT.md`)
+
+---
+
+## 🌐 Deployment
+
+### Supported Platforms
+
+| Platform | Guide |
+|----------|-------|
+| Vercel | See `frontend/vercel.json` |
+| Netlify | See `frontend/netlify.toml` |
+| Render | Static site deployment |
+| Apache | `.htaccess` included in build |
+| Nginx | See `frontend/DEPLOYMENT.md` |
+| FTP/SFTP | See `frontend/ftp-deploy/README.md` |
+
+### Production Build
+
+```bash
+cd frontend
+npm run build        # Outputs to out/
+```
+
+Upload contents of `out/` to your hosting provider.
+
+### Environment Variables (Production)
+
+Set these in your hosting platform:
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Backend API URL |
+| `NEXT_PUBLIC_WS_URL` | WebSocket URL |
+
+See `frontend/DEPLOYMENT.md` for detailed deployment instructions.

@@ -36,8 +36,14 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
 
 
 def admin_required(user: User = Depends(get_current_user)):
-    if user.role != "admin":
+    if user.role not in ("admin", "super_admin"):
         raise HTTPException(403, "Admin access required")
+    return user
+
+
+def super_admin_required(user: User = Depends(get_current_user)):
+    if user.role != "super_admin":
+        raise HTTPException(403, "Super Admin access required")
     return user
 
 
@@ -86,7 +92,7 @@ async def signup(data: UserCreate, request: Request, db: Session = Depends(get_d
 
 
 def get_plan_limits(plan: str) -> dict:
-    """Get usage limits based on user plan."""
+    """Get usage limits based on user plan (CLAUDE.md specs)."""
     if plan == "growth":
         return {
             "whatsapp_limit": 1500,
@@ -95,13 +101,21 @@ def get_plan_limits(plan: str) -> dict:
             "custom_products_limit": -1,  # unlimited
             "automation_rules": -1,  # unlimited
         }
-    else:  # starter
+    elif plan == "starter":
+        return {
+            "whatsapp_limit": 500,
+            "ai_limit": 500,
+            "custom_responses_limit": -1,  # unlimited
+            "custom_products_limit": 10,  # 10 products limit
+            "automation_rules": 20,
+        }
+    else:  # free
         return {
             "whatsapp_limit": 200,
             "ai_limit": 200,
-            "custom_responses_limit": 10,
-            "custom_products_limit": 10,
-            "automation_rules": 5,
+            "custom_responses_limit": 5,
+            "custom_products_limit": 0,  # no product features
+            "automation_rules": 2,
         }
 
 
@@ -295,31 +309,35 @@ async def upgrade_plan(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upgrade from Starter to Growth plan."""
-    logger.info(f"User {user.id} attempting to upgrade plan from {user.plan} to growth.")
+    """Upgrade from Free/Starter to Starter/Growth plan."""
+    logger.info(f"User {user.id} attempting to upgrade plan from {user.plan} to {request.plan}.")
 
-    if user.plan == "growth":
-        raise HTTPException(400, "Already on Growth plan")
+    if user.plan == request.plan:
+        raise HTTPException(400, f"Already on {request.plan} plan")
 
-    if user.plan != "starter":
-        raise HTTPException(400, "Invalid plan for upgrade")
+    if request.plan not in ["starter", "growth"]:
+        raise HTTPException(400, "Invalid target plan")
 
     # Update user plan
-    user.plan = "growth"
+    user.plan = request.plan
 
-    # Update usage limits
+    # Update usage limits based on target plan
     usage = db.query(Usage).filter(Usage.user_id == user.id).first()
     if usage:
-        usage.whatsapp_limit = 1500
-        usage.ai_limit = 1500
+        if request.plan == "starter":
+            usage.whatsapp_limit = 500
+            usage.ai_limit = 500
+        elif request.plan == "growth":
+            usage.whatsapp_limit = 1500
+            usage.ai_limit = 1500
         db.commit()
         db.refresh(usage)
 
-    logger.info(f"User {user.id} successfully upgraded to Growth plan.")
+    logger.info(f"User {user.id} successfully upgraded to {request.plan} plan.")
     return {
         "status": "ok",
-        "message": "Successfully upgraded to Growth plan",
-        "new_plan": "growth"
+        "message": f"Successfully upgraded to {request.plan} plan",
+        "new_plan": request.plan
     }
 
 
@@ -329,29 +347,187 @@ async def downgrade_plan(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Downgrade from Growth to Starter plan."""
-    logger.info(f"User {user.id} attempting to downgrade plan from {user.plan} to starter.")
+    """Downgrade from Growth/Starter to Free/Starter plan."""
+    target_plan = request.plan if request.plan else "free"
+    logger.info(f"User {user.id} attempting to downgrade plan from {user.plan} to {target_plan}.")
 
-    if user.plan == "starter":
-        raise HTTPException(400, "Already on Starter plan")
+    if user.plan == target_plan:
+        raise HTTPException(400, f"Already on {target_plan} plan")
 
-    if user.plan != "growth":
-        raise HTTPException(400, "Invalid plan for downgrade")
+    if target_plan not in ["free", "starter"]:
+        raise HTTPException(400, "Invalid target plan for downgrade")
 
     # Update user plan
-    user.plan = "starter"
+    user.plan = target_plan
 
-    # Update usage limits
+    # Update usage limits based on target plan
     usage = db.query(Usage).filter(Usage.user_id == user.id).first()
     if usage:
-        usage.whatsapp_limit = 200
-        usage.ai_limit = 200
+        if target_plan == "free":
+            usage.whatsapp_limit = 200
+            usage.ai_limit = 200
+        elif target_plan == "starter":
+            usage.whatsapp_limit = 500
+            usage.ai_limit = 500
         db.commit()
         db.refresh(usage)
 
-    logger.info(f"User {user.id} successfully downgraded to Starter plan.")
+    logger.info(f"User {user.id} successfully downgraded to {target_plan} plan.")
     return {
         "status": "ok",
-        "message": "Successfully downgraded to Starter plan",
-        "new_plan": "starter"
+        "message": f"Successfully downgraded to {target_plan} plan",
+        "new_plan": target_plan
     }
+
+
+# --- SUPER ADMIN ENDPOINTS ---
+
+class UserCreateAdmin(BaseModel):
+    email: str
+    password: str
+    full_name: str
+    role: str = "user"
+    plan: str = "starter"
+
+
+class UserUpdateAdmin(BaseModel):
+    email: str = None
+    full_name: str = None
+    role: str = None
+    plan: str = None
+    is_active: bool = None
+
+
+@router.post("/admin/create-user", response_model=UserOut)
+async def create_user_admin(
+    data: UserCreateAdmin,
+    admin: User = Depends(super_admin_required),
+    db: Session = Depends(get_db)
+):
+    """Super Admin only: create a new user."""
+    logger.info(f"Super Admin {admin.id} creating new user with email: {data.email}")
+
+    # Check if email already exists
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(400, "Email already registered")
+
+    # Validate role
+    if data.role not in ("user", "admin", "super_admin"):
+        raise HTTPException(400, "Invalid role. Must be 'user', 'admin', or 'super_admin'")
+
+    # Validate plan
+    if data.plan not in ("starter", "growth"):
+        raise HTTPException(400, "Invalid plan. Must be 'starter' or 'growth'")
+
+    # Create user
+    user = User(
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role=data.role,
+        plan=data.plan,
+        full_name=data.full_name
+    )
+    db.add(user)
+    db.flush()
+
+    # Create default bot for user
+    bot = Bot(user_id=user.id, mode="default", status=True)
+    db.add(bot)
+    db.flush()
+
+    bs = BotSettings(bot_id=bot.id)
+    integ = Integration(bot_id=bot.id)
+    usage = Usage(user_id=user.id)
+    db.add(bs)
+    db.add(integ)
+    db.add(usage)
+    db.commit()
+    db.refresh(user)
+
+    logger.info(f"Super Admin {admin.id} created user {user.id} ({data.email})")
+    return user
+
+
+@router.get("/admin/user/{user_id}", response_model=UserOut)
+async def get_user_detail(
+    user_id: int,
+    admin: User = Depends(super_admin_required),
+    db: Session = Depends(get_db)
+):
+    """Super Admin only: get detailed user information."""
+    logger.info(f"Super Admin {admin.id} requesting details for user {user_id}")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    return user
+
+
+@router.put("/admin/update-user/{user_id}", response_model=UserOut)
+async def update_user_admin(
+    user_id: int,
+    data: UserUpdateAdmin,
+    admin: User = Depends(super_admin_required),
+    db: Session = Depends(get_db)
+):
+    """Super Admin only: update user details."""
+    logger.info(f"Super Admin {admin.id} updating user {user_id}")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    # Update fields if provided
+    if data.email is not None:
+        # Check if new email is already taken by another user
+        existing = db.query(User).filter(User.email == data.email).filter(User.id != user_id).first()
+        if existing:
+            raise HTTPException(400, "Email already registered")
+        user.email = data.email
+
+    if data.full_name is not None:
+        user.full_name = data.full_name
+
+    if data.role is not None:
+        if data.role not in ("user", "admin", "super_admin"):
+            raise HTTPException(400, "Invalid role")
+        user.role = data.role
+
+    if data.plan is not None:
+        if data.plan not in ("starter", "growth"):
+            raise HTTPException(400, "Invalid plan")
+        user.plan = data.plan
+
+    db.commit()
+    db.refresh(user)
+
+    logger.info(f"Super Admin {admin.id} updated user {user_id}")
+    return user
+
+
+@router.get("/admin/subscriptions")
+async def get_all_subscriptions(
+    admin: User = Depends(super_admin_required),
+    db: Session = Depends(get_db)
+):
+    """Super Admin only: get all user subscriptions."""
+    logger.info(f"Super Admin {admin.id} requesting all subscriptions")
+
+    users = db.query(User).all()
+    subscriptions = []
+
+    for user in users:
+        usage = db.query(Usage).filter(Usage.user_id == user.id).first()
+        subscriptions.append({
+            "user_id": user.id,
+            "email": user.email,
+            "plan": user.plan,
+            "whatsapp_messages_sent": usage.whatsapp_messages_sent if usage else 0,
+            "whatsapp_limit": usage.whatsapp_limit if usage else 1000,
+            "ai_requests_made": usage.ai_requests_made if usage else 0,
+            "ai_limit": usage.ai_limit if usage else 500,
+        })
+
+    return {"subscriptions": subscriptions}

@@ -23,13 +23,31 @@ interface IntegrationData {
 
 export default function IntegrationsPage() {
   const [integ, setInteg] = useState<IntegrationData | null>(null);
-  const [userPlan, setUserPlan] = useState<string>("starter");
+  const [userPlan, setUserPlan] = useState<string>("free");
   const [whatsappForm, setWhatsappForm] = useState({
     whatsapp_token: "",
     phone_number_id: "",
     whatsapp_number: "",
     verify_token: "",
   });
+
+  // Generate unique verify token for each user
+  const generateVerifyToken = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = 'orvyn_';
+    for (let i = 0; i < 32; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
+  };
+
+  const handleAutoGenerateToken = () => {
+    const newToken = generateVerifyToken();
+    setWhatsappForm(prev => ({ ...prev, verify_token: newToken }));
+    showToast("Unique verify token generated", "success");
+  };
+  const [selectedCountry, setSelectedCountry] = useState("+1");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [ecommerceForm, setEcommerceForm] = useState({
     website_url: "",
     consumer_key: "",
@@ -100,9 +118,9 @@ export default function IntegrationsPage() {
         showToast("Website URL is required.", "warning");
         return;
     }
-    // Block product integration for starter users - but ALLOW service integration
-    if (userPlan === 'starter' && integrationType === 'product') {
-        showToast("⚠️ Product features (WooCommerce) require Growth plan. Select 'Service Based' or upgrade to unlock product features.", "warning");
+    // Block product integration for FREE users only - Starter and Growth can use products
+    if (userPlan === 'free' && integrationType === 'product') {
+        showToast("⚠️ Product features require Starter or Growth plan. Upgrade to unlock product features.", "warning");
         return;
     }
     setSavingEcommerce(true);
@@ -149,13 +167,14 @@ export default function IntegrationsPage() {
   };
 
   const handleGenerateButton = () => {
-    const phone = (whatsappForm.whatsapp_number || "").replace(/\D/g, '');
-    if (!phone) {
-      showToast("Please enter your WhatsApp number first", "warning");
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (!cleanPhone) {
+      showToast("Please enter your phone number", "warning");
       return;
     }
+    const fullPhone = selectedCountry.replace('+', '') + cleanPhone;
     const code = `<!-- WhatsApp Floating Button by ORVYN -->
-<a href="https://wa.me/${phone}" target="_blank" style="position: fixed; bottom: 20px; right: 20px; background-color: #25D366; color: white; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 9999;">
+<a href="https://wa.me/${fullPhone}" target="_blank" style="position: fixed; bottom: 20px; right: 20px; background-color: #25D366; color: white; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 9999;">
     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="white" viewBox="0 0 24 24">
         <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
     </svg>
@@ -245,8 +264,8 @@ export default function IntegrationsPage() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-slate-500">Connect your WhatsApp Business number</p>
                   <span className="text-slate-300">•</span>
-                  <a 
-                    href="/dashboard/help" 
+                  <a
+                    href="/dashboard/help"
                     className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
                   >
                     Setup Guide
@@ -254,6 +273,18 @@ export default function IntegrationsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                     </svg>
                   </a>
+                </div>
+              </div>
+              {/* Plan Info - WhatsApp available in ALL plans */}
+              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-emerald-800 font-semibold text-sm">WhatsApp Configuration - Available in All Plans</p>
+                    <p className="text-emerald-700 text-xs mt-0.5">Free, Starter, and Growth plans all include full WhatsApp Business API integration. Each bot gets its own unique phone number ID, verify token, and webhook configuration.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -282,15 +313,23 @@ export default function IntegrationsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Verify Token</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Verify Token (Unique for your bot)</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     className="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                     value={whatsappForm.verify_token}
                     onChange={(e) => setWhatsappForm(prev => ({ ...prev, verify_token: e.target.value }))}
-                    placeholder="Your verification token"
+                    placeholder="Click 'Generate' to create a unique token"
                   />
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateToken}
+                    className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition"
+                    title="Generate unique verify token"
+                  >
+                    Generate
+                  </button>
                   <button
                     onClick={() => copyToClipboard(whatsappForm.verify_token, "Verify Token")}
                     className="px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition"
@@ -358,16 +397,31 @@ export default function IntegrationsPage() {
             </div>
           </div>
 
-          {/* Starter Plan Warning for Product Integration */}
-          {userPlan === 'starter' && integrationType === 'product' && (
+          {/* Free Plan Warning for Product Integration */}
+          {userPlan === 'free' && integrationType === 'product' && (
             <div className="p-4 bg-amber-50 border-b border-amber-200">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
                 <div className="flex-1">
-                  <p className="text-amber-800 font-semibold text-sm">Product Features Require Growth Plan</p>
-                  <p className="text-amber-700 text-xs mt-1">WooCommerce integration, product listing, and product-based flows are only available in the Growth plan ($3/month). Upgrade to unlock these features.</p>
+                  <p className="text-amber-800 font-semibold text-sm">Product Features Require Paid Plan</p>
+                  <p className="text-amber-700 text-xs mt-1">WooCommerce integration, product listing, and product-based flows are available in Starter ($1/month) and Growth ($3/month) plans. Upgrade to unlock these features.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Starter Plan Product Limit Notice */}
+          {userPlan === 'starter' && integrationType === 'product' && (
+            <div className="p-4 bg-blue-50 border-b border-blue-200">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div className="flex-1">
+                  <p className="text-blue-800 font-semibold text-sm">Starter Plan: 10 Product Limit</p>
+                  <p className="text-blue-700 text-xs mt-1">Your plan includes up to 10 products. Upgrade to Growth ($3/month) for unlimited products.</p>
                 </div>
               </div>
             </div>
@@ -511,14 +565,97 @@ export default function IntegrationsPage() {
 
           <div className="p-6 space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">WhatsApp Number</label>
-              <input
-                type="text"
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
-                value={whatsappForm.whatsapp_number}
-                onChange={(e) => setWhatsappForm(prev => ({ ...prev, whatsapp_number: e.target.value }))}
-                placeholder="e.g., +14085551234"
-              />
+              <label className="block text-sm font-medium text-slate-700 mb-2">Country Code</label>
+              <select
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all bg-white"
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+              >
+                <option value="+1">🇺🇸 +1 (USA/Canada)</option>
+                <option value="+44">🇬🇧 +44 (UK)</option>
+                <option value="+91">🇮🇳 +91 (India)</option>
+                <option value="+92">🇵🇰 +92 (Pakistan)</option>
+                <option value="+61">🇦🇺 +61 (Australia)</option>
+                <option value="+49">🇩🇪 +49 (Germany)</option>
+                <option value="+33">🇫🇷 +33 (France)</option>
+                <option value="+34">🇪🇸 +34 (Spain)</option>
+                <option value="+39">🇮🇹 +39 (Italy)</option>
+                <option value="+81">🇯🇵 +81 (Japan)</option>
+                <option value="+86">🇨🇳 +86 (China)</option>
+                <option value="+55">🇧🇷 +55 (Brazil)</option>
+                <option value="+52">🇲🇽 +52 (Mexico)</option>
+                <option value="+7">🇷🇺 +7 (Russia)</option>
+                <option value="+27">🇿🇦 +27 (South Africa)</option>
+                <option value="+971">🇦🇪 +971 (UAE)</option>
+                <option value="+966">🇸🇦 +966 (Saudi Arabia)</option>
+                <option value="+65">🇸🇬 +65 (Singapore)</option>
+                <option value="+60">🇲🇾 +60 (Malaysia)</option>
+                <option value="+62">🇮🇩 +62 (Indonesia)</option>
+                <option value="+63">🇵🇭 +63 (Philippines)</option>
+                <option value="+66">🇹🇭 +66 (Thailand)</option>
+                <option value="+84">🇻🇳 +84 (Vietnam)</option>
+                <option value="+20">🇪🇬 +20 (Egypt)</option>
+                <option value="+234">🇳🇬 +234 (Nigeria)</option>
+                <option value="+254">🇰🇪 +254 (Kenya)</option>
+                <option value="+46">🇸🇪 +46 (Sweden)</option>
+                <option value="+47">🇳🇴 +47 (Norway)</option>
+                <option value="+45">🇩🇰 +45 (Denmark)</option>
+                <option value="+31">🇳🇱 +31 (Netherlands)</option>
+                <option value="+32">🇧🇪 +32 (Belgium)</option>
+                <option value="+41">🇨🇭 +41 (Switzerland)</option>
+                <option value="+43">🇦🇹 +43 (Austria)</option>
+                <option value="+48">🇵🇱 +48 (Poland)</option>
+                <option value="+90">🇹🇷 +90 (Turkey)</option>
+                <option value="+30">🇬🇷 +30 (Greece)</option>
+                <option value="+351">🇵🇹 +351 (Portugal)</option>
+                <option value="+353">🇮🇪 +353 (Ireland)</option>
+                <option value="+64">🇳🇿 +64 (New Zealand)</option>
+                <option value="+54">🇦🇷 +54 (Argentina)</option>
+                <option value="+56">🇨🇱 +56 (Chile)</option>
+                <option value="+57">🇨🇴 +57 (Colombia)</option>
+                <option value="+58">🇻🇪 +58 (Venezuela)</option>
+                <option value="+51">🇵🇪 +51 (Peru)</option>
+                <option value="+82">🇰🇷 +82 (South Korea)</option>
+                <option value="+886">🇹🇼 +886 (Taiwan)</option>
+                <option value="+852">🇭🇰 +852 (Hong Kong)</option>
+                <option value="+972">🇮🇱 +972 (Israel)</option>
+                <option value="+98">🇮🇷 +98 (Iran)</option>
+                <option value="+964">🇮🇶 +964 (Iraq)</option>
+                <option value="+968">🇴🇲 +968 (Oman)</option>
+                <option value="+965">🇰🇼 +965 (Kuwait)</option>
+                <option value="+974">🇶🇦 +974 (Qatar)</option>
+                <option value="+973">🇧🇭 +973 (Bahrain)</option>
+                <option value="+962">🇯🇴 +962 (Jordan)</option>
+                <option value="+961">🇱🇧 +961 (Lebanon)</option>
+                <option value="+212">🇲🇦 +212 (Morocco)</option>
+                <option value="+213">🇩🇿 +213 (Algeria)</option>
+                <option value="+216">🇹🇳 +216 (Tunisia)</option>
+                <option value="+233">🇬🇭 +233 (Ghana)</option>
+                <option value="+251">🇪🇹 +251 (Ethiopia)</option>
+                <option value="+255">🇹🇿 +255 (Tanzania)</option>
+                <option value="+256">🇺🇬 +256 (Uganda)</option>
+                <option value="+237">🇨🇲 +237 (Cameroon)</option>
+                <option value="+225">🇨🇮 +225 (Ivory Coast)</option>
+                <option value="+221">🇸🇳 +221 (Senegal)</option>
+                <option value="+234">🇧🇯 +229 (Benin)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
+              <div className="flex gap-3">
+                <div className="flex items-center px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl text-slate-700 font-semibold min-w-[80px] justify-center">
+                  {selectedCountry}
+                </div>
+                <input
+                  type="tel"
+                  className="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="Enter phone number"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Enter your number without the country code or + sign</p>
             </div>
 
             <button

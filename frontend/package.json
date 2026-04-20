@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "preview": "npx serve out",
+    "export": "next build",
+    "deploy:clean": "rm -rf out .next && npm run build"
   },
   "dependencies": {
     "next": "^15.0.0",

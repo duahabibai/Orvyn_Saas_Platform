@@ -125,9 +125,10 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
     contact_address = contact.get('address', '')
     contact_hours = contact.get('hours', '')
 
-    # Feature gating: Product info only for Growth plan in Product business
-    # Service businesses always show services/contact info regardless of plan
-    show_products = (user_plan == "growth" and business_type == "product")
+    # Feature gating: Free plan = service only, Starter/Growth = product access
+    # Starter plan: limit to 10 products, Growth: unlimited (up to 30 in AI context)
+    show_products = (user_plan in ["starter", "growth"] and business_type == "product")
+    product_limit = 10 if user_plan == "starter" else 30
 
     # Build CONTACT section FIRST (most important for service queries)
     contact_section = f"## 📞 CONTACT INFO for {site_name}:\n"
@@ -144,22 +145,24 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
     website_section += f"- Business Type: {business_type.upper()} based\n"
     website_section += f"- User Plan: {user_plan.title()}\n"
 
-    # Build product catalog section
+    # Build product catalog section with plan-based limits
     catalog_section = ""
     if business_type == "product":
         if show_products and products:
             catalog_lines = ["## 🛍️ PRODUCT CATALOG:"]
-            for p in products[:30]:
+            for p in products[:product_limit]:
                 p_name = p.get('name', '?')[:50]
                 sku = p.get('sku', '')
                 price = p.get('price', '0')
                 stock = "In Stock" if p.get("stock_status") == "instock" else "Out of Stock"
                 catalog_lines.append(f"  - {p_name} | SKU: {sku} | {price} PKR | {stock}")
-            if len(products) > 30:
-                catalog_lines.append(f"  ...and {len(products) - 30} more products")
+            if len(products) > product_limit:
+                catalog_lines.append(f"  ...and {len(products) - product_limit} more products")
+            if user_plan == "starter":
+                catalog_lines.append("\n📦 *Note*: Starter plan shows first 10 products. Upgrade to Growth for full catalog.")
             catalog_section = "\n".join(catalog_lines)
-        elif user_plan == "starter":
-            catalog_section = "## PRODUCTS: Locked for Starter plan. Guide customers to contact info or suggest upgrade to Growth plan for product details."
+        elif user_plan == "free":
+            catalog_section = "## PRODUCTS: Not available in Free plan. Upgrade to Starter or Growth for product catalog access."
         else:
             catalog_section = "## PRODUCTS: No product data available. Focus on services and contact info."
     else:
@@ -176,13 +179,9 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
                           f"Use the website data below to provide information about our services and contact details. "
                           f"If specific contact details like email/phone are 'Refer to our website', politely ask them to check our site or offer to have a human reach out.")
         else:
-            if user_plan == "starter":
-                user_prompt = (f"You are a professional sales assistant for {site_name}. "
-                              f"FOCUS ON CONTACT AND BASIC SERVICE INFO. "
-                              f"Politely mention that product catalogs are available in our premium tier if they ask for prices/products.")
-            else:
-                user_prompt = (f"You are a professional sales assistant for {site_name}. "
-                              f"Use the website data below to answer questions about our products, services, and how to reach us.")
+            # Product-based business - all paid plans get product access
+            user_prompt = (f"You are a professional sales assistant for {site_name}. "
+                          f"Use the website data below to answer questions about our products, services, and how to reach us.")
 
     lang_instruction = ""
     if lang and lang.lower() != 'auto':
@@ -206,7 +205,7 @@ def ai_reply(text: str, lang: str, api_key: str, provider: str,
 - Tone: Professional, helpful, and concise.
 - Missing Info: If contact details show "Available on website", politely offer to have a human contact them.
 - Order Flow: If they want to order/hire, ask: Item → Quantity → Name → Address.
-- Starter Plan: For product questions, mention service options or suggest upgrade.
+- Plan Features: Free plan = service info only. Starter/Growth = full product catalog access.
 {lang_instruction}"""
 
     logger.info(f"AI ({provider}) system prompt built - total length: {len(system)} chars")
