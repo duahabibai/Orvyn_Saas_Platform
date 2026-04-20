@@ -1,0 +1,7 @@
+{
+  "production": {
+    "host": "orvynlabs.brandlessdigital.com",
+    "user": "REPLACE_WITH_USER",
+    "pass": "REPLACE_WITH_PASSWORD"
+  }
+}

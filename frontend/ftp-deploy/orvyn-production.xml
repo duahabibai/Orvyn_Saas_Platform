@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FileZilla3 version="3.66.5" platform="windows">
+    <Servers>
+        <Server>
+            <Host>orvynlabs.brandlessdigital.com</Host>
+            <Port>21</Port>
+            <Protocol>0</Protocol>
+            <Type>0</Type>
+            <User>REPLACE_WITH_USER</User>
+            <Pass encoding="base64"></Pass>
+            <Logontype>1</Logontype>
+            <Name>ORVYN Production (Brandless Digital)</Name>
+            <RemoteDir>/</RemoteDir>
+            <SyncBrowsing>0</SyncBrowsing>
+        </Server>
+    </Servers>
+</FileZilla3>
