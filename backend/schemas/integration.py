@@ -11,7 +11,7 @@ class IntegrationUpdate(BaseModel):
     woo_consumer_key: Optional[str] = None
     woo_consumer_secret: Optional[str] = None
     wp_base_url: Optional[str] = None
-    business_type: Optional[str] = "product"
+    business_type: Optional[str] = None  # No default - only check when explicitly provided
 
 
 class IntegrationResponse(BaseModel):

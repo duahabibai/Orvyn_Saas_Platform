@@ -6,7 +6,9 @@
       "Bash(curl -X POST \"https://orvyn-saas-platform.onrender.com/api/login\" -H \"Content-Type: application/json\" -H \"Origin: https://orvynlabs.brandlessdigital.com\" -d '{\"email\":\"test@test.com\",\"password\":\"test\"}')",
       "Bash(curl *)",
       "Bash(\"E:\\\\assignment dua *)",
-      "Bash(dir *)"
+      "Bash(dir *)",
+      "Bash(python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(where ngrok *)"
     ]
   }
 }

@@ -114,8 +114,14 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     apiGet<Usage>("/api/auth/usage")
-      .then((data) => setUsage(data))
-      .catch(console.error)
+      .then((data) => {
+        console.log("Usage data loaded:", data);
+        setUsage(data);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch usage:", err);
+        showToast("Failed to load subscription data. Please refresh.", "error");
+      })
       .finally(() => setLoading(false));
   }, []);
 

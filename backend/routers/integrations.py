@@ -91,25 +91,36 @@ def update_integrations(data: IntegrationUpdate, user_id: int = Depends(get_curr
     - Tokens persist across bot mode changes, website changes, and settings updates
     - Only user-initiated reconfiguration removes/updates tokens
     - Each user has unique tokens that are encrypted in database
+
+    PLAN RESTRICTIONS:
+    - WhatsApp integration is available in ALL plans (Free, Starter, Growth)
+    - Product/WooCommerce integration is only available in Starter and Growth plans
     """
     from models import Bot
     integ = db.query(Integration).join(Integration.bot).filter(Bot.user_id == user_id).first()
     if not integ:
         raise HTTPException(404, "Integrations not found")
 
-    # Plan-based feature gating: Free plan = WhatsApp allowed, product integration restricted
-    # WhatsApp integration (phone_number_id, verify_token, whatsapp_token, whatsapp_number) is available in ALL plans
+    # Plan-based feature gating
     user_plan = get_user_plan(user_id, db)
 
-    # Only block product-type WooCommerce integration for free users, NOT WhatsApp
-    if user_plan == "free":
-        # Free plan: WooCommerce/product integration not allowed, but WhatsApp IS allowed
-        if data.business_type == "product":
-            raise HTTPException(403, PLAN_ERROR_FREE)
-        if data.woocommerce_url and data.woocommerce_url.strip() != "":
-            raise HTTPException(403, PLAN_ERROR_FREE)
-        if data.woo_consumer_key or data.woo_consumer_secret:
-            raise HTTPException(403, PLAN_ERROR_FREE)
+    # CRITICAL: Check for product-related fields EXPLICITLY
+    # WhatsApp fields are ALWAYS allowed for all plans
+    logger.info(f"User {user_id} (plan: {user_plan}) - Received fields: business_type={data.business_type}, woocommerce_url={data.woocommerce_url}, woo_key={data.woo_consumer_key is not None}, woo_secret={data.woo_consumer_secret is not None}")
+
+    product_field_submitted = (
+        (data.business_type is not None and data.business_type == "product") or
+        (data.woocommerce_url is not None and data.woocommerce_url.strip() != "") or
+        data.woo_consumer_key is not None or
+        data.woo_consumer_secret is not None
+    )
+
+    logger.info(f"Product field submitted: {product_field_submitted}")
+
+    # Only block product integration for free users, WhatsApp is ALWAYS allowed
+    if user_plan == "free" and product_field_submitted:
+        logger.warning(f"Free user {user_id} attempted to submit product fields")
+        raise HTTPException(403, PLAN_ERROR_FREE)
     # Note: WhatsApp fields (phone_number_id, whatsapp_number, verify_token, whatsapp_token) are NOT restricted
 
     # Track if website URL or type changed - if so, clear old cached data

@@ -69,7 +69,7 @@ export default function IntegrationsPage() {
   const [activeTab, setActiveTab] = useState<"whatsapp" | "website" | "button">("whatsapp");
   const { showToast, ToastContainer } = useToast();
 
-  const apiUrl = typeof window !== 'undefined' ? 'https://orvyn-saas-platform.onrender.com' : '';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? 'https://orvyn-saas-platform.onrender.com' : '');
   const webhookUrl = `${apiUrl}/webhook`;
 
   useEffect(() => {
@@ -358,10 +358,10 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-slate-600">
-                    https://orvyn-saas-platform.onrender.com/webhook
+                    {apiUrl}/webhook
                   </code>
                   <button
-                    onClick={() => copyToClipboard("https://orvyn-saas-platform.onrender.com/webhook", "Webhook URL")}
+                    onClick={() => copyToClipboard(`${apiUrl}/webhook`, "Webhook URL")}
                     className="px-3 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition"
                   >
                     Copy
