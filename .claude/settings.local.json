@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(curl -I -X OPTIONS \"https://orvyn-saas-platform.onrender.com/api/login\" -H \"Origin: https://orvynlabs.brandlessdigital.com\" -H \"Access-Control-Request-Method: POST\")",
+      "Bash(curl -X POST \"https://orvyn-saas-platform.onrender.com/api/login\" -H \"Content-Type: application/json\" -H \"Origin: https://orvynlabs.brandlessdigital.com\" -d '{\"email\":\"test@test.com\",\"password\":\"test\"}')",
+      "Bash(curl *)",
+      "Bash(\"E:\\\\assignment dua *)"
+    ]
+  }
+}
