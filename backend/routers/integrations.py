@@ -127,7 +127,19 @@ def update_integrations(
             integ.whatsapp_token = None
 
     if data.phone_number_id is not None:
-        integ.phone_number_id = data.phone_number_id.strip()
+        new_phone_id = data.phone_number_id.strip()
+        if new_phone_id != "" and new_phone_id != integ.phone_number_id:
+            # Check if this ID is already used by another integration
+            existing = db.query(Integration).filter(
+                Integration.phone_number_id == new_phone_id,
+                Integration.id != integ.id
+            ).first()
+            if existing:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"The WhatsApp Phone Number ID '{new_phone_id}' is already registered with another bot. Please use a unique ID."
+                )
+        integ.phone_number_id = new_phone_id
 
     if data.whatsapp_number is not None:
         integ.whatsapp_number = data.whatsapp_number.strip()
