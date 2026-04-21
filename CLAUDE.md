@@ -1,0 +1,6 @@
+integrations/:1 Access to fetch at 'https://orvyn-saas-platform.onrender.com/api/integrations/me' from origin 'https://orvynlabs.brandlessdigital.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+orvyn-saas-platform.onrender.com/api/integrations/me:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+integrations/:1 Access to fetch at 'https://orvyn-saas-platform.onrender.com/api/integrations/me' from origin 'https://orvynlabs.brandlessdigital.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+orvyn-saas-platform.onrender.com/api/integrations/me:1  Failed to load resource: net::ERR_FAILEDUnderstand this error
+integrations/:1 Access to fetch at 'https://orvyn-saas-platform.onrender.com/api/integrations/me' from origin 'https://orvynlabs.brandlessdigital.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
+orvyn-saas-platform.onrender.com/api/integrations/me:1  Failed to load resource: net::ERR_FAILED
