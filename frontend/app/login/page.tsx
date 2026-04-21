@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError("");
     try {
       // Use fetch directly to avoid apiPost token issue on first request
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/login`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orvyn-saas-platform.onrender.com'}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -33,7 +33,7 @@ export default function LoginPage() {
       localStorage.setItem("refreshToken", res.refresh_token);
 
       // Now fetch user info with the token
-      const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/me`, {
+      const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://orvyn-saas-platform.onrender.com'}/api/auth/me`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

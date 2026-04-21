@@ -23,6 +23,7 @@ origins = [
     "http://localhost:3002",
     "http://localhost:3004",
     "https://orvynlabs.brandlessdigital.com",
+    "https://orvyn-saas-platform.onrender.com",
 ]
 
 if settings.ALLOWED_ORIGINS:
