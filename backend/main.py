@@ -39,13 +39,12 @@ if settings.ALLOWED_ORIGINS:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Use the dynamically populated list
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
-)
-# Include routers
+)# Include routers
 app.include_router(auth.router)
 app.include_router(bots.router)
 app.include_router(integrations.router)
