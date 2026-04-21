@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # ===========================================
     # CORS
     # ===========================================
-    ALLOWED_ORIGINS: str = "http://localhost:3000,https://orvynlabs.brandlessdigital.com,https://orvyn-saas-platform.onrender.com"
+    ALLOWED_ORIGINS: str = "https://orvynlabs.brandlessdigital.com,https://orvyn-saas-platform.onrender.com,http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3004"
 
     # ===========================================
     # Rate Limiting

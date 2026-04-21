@@ -219,7 +219,7 @@ class PlanUpdateRequest(BaseModel):
 
 
 class PlanChangeRequest(BaseModel):
-    pass  # No body needed, just a POST request
+    plan: str
 
 
 @router.delete("/admin/users/{user_id}")
@@ -320,18 +320,24 @@ async def upgrade_plan(
 
     # Update user plan
     user.plan = request.plan
+    db.add(user)
 
     # Update usage limits based on target plan
     usage = db.query(Usage).filter(Usage.user_id == user.id).first()
-    if usage:
-        if request.plan == "starter":
-            usage.whatsapp_limit = 500
-            usage.ai_limit = 500
-        elif request.plan == "growth":
-            usage.whatsapp_limit = 1500
-            usage.ai_limit = 1500
-        db.commit()
-        db.refresh(usage)
+    if not usage:
+        usage = Usage(user_id=user.id)
+        db.add(usage)
+
+    if request.plan == "starter":
+        usage.whatsapp_limit = 500
+        usage.ai_limit = 500
+    elif request.plan == "growth":
+        usage.whatsapp_limit = 1500
+        usage.ai_limit = 1500
+    
+    db.commit()
+    db.refresh(user)
+    db.refresh(usage)
 
     logger.info(f"User {user.id} successfully upgraded to {request.plan} plan.")
     return {
@@ -359,18 +365,24 @@ async def downgrade_plan(
 
     # Update user plan
     user.plan = target_plan
+    db.add(user)
 
     # Update usage limits based on target plan
     usage = db.query(Usage).filter(Usage.user_id == user.id).first()
-    if usage:
-        if target_plan == "free":
-            usage.whatsapp_limit = 200
-            usage.ai_limit = 200
-        elif target_plan == "starter":
-            usage.whatsapp_limit = 500
-            usage.ai_limit = 500
-        db.commit()
-        db.refresh(usage)
+    if not usage:
+        usage = Usage(user_id=user.id)
+        db.add(usage)
+
+    if target_plan == "free":
+        usage.whatsapp_limit = 200
+        usage.ai_limit = 200
+    elif target_plan == "starter":
+        usage.whatsapp_limit = 500
+        usage.ai_limit = 500
+        
+    db.commit()
+    db.refresh(user)
+    db.refresh(usage)
 
     logger.info(f"User {user.id} successfully downgraded to {target_plan} plan.")
     return {

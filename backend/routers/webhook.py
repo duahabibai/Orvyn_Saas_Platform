@@ -91,15 +91,20 @@ def verify_webhook(
             logger.info(f"Checking {len(all_integs)} stored verify tokens")
             for integ in all_integs:
                 try:
-                    stored_token = decrypt_value(integ.verify_token)
+                    stored_token = integ.verify_token
                     if stored_token == hub_token:
                         logger.info(f"Verification SUCCESS - matched integration ID {integ.id} (bot {integ.bot_id})")
                         return PlainTextResponse(content=hub_challenge)
                 except:
-                    # If decryption fails, try comparing raw value
-                    if integ.verify_token == hub_token:
-                        logger.info(f"Verification SUCCESS - matched integration ID {integ.id} (raw)")
-                        return PlainTextResponse(content=hub_challenge)
+                    # Fallback for old encrypted tokens if any
+                    try:
+                        stored_token = decrypt_value(integ.verify_token)
+                        if stored_token == hub_token:
+                            logger.info(f"Verification SUCCESS (encrypted) - matched integration ID {integ.id} (bot {integ.bot_id})")
+                            return PlainTextResponse(content=hub_challenge)
+                    except:
+                        pass
+
         except Exception as e:
             logger.error(f"Database error during verification: {e}")
 

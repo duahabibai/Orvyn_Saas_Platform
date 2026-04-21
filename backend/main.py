@@ -18,12 +18,12 @@ app = FastAPI(title=settings.APP_NAME, version="2.0")
 
 # Configure CORS with high compatibility for production
 origins = [
+    "https://orvynlabs.brandlessdigital.com",
+    "https://orvyn-saas-platform.onrender.com",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
     "http://localhost:3004",
-    "https://orvynlabs.brandlessdigital.com",
-    "https://orvyn-saas-platform.onrender.com",
 ]
 
 if settings.ALLOWED_ORIGINS:
@@ -39,20 +39,11 @@ if settings.ALLOWED_ORIGINS:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Content-Type", 
-        "Authorization", 
-        "Accept", 
-        "Origin", 
-        "X-Requested-With",
-        "Access-Control-Request-Method",
-        "Access-Control-Request-Headers"
-    ],
+    allow_headers=["*"],
     expose_headers=["*"],
-    max_age=3600, # Cache preflight response for 1 hour
 )
 
 # Include routers
