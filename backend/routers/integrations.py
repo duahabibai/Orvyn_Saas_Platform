@@ -97,16 +97,20 @@ def update_integrations(data: IntegrationUpdate, user_id: int = Depends(get_curr
     if not integ:
         raise HTTPException(404, "Integrations not found")
 
-    # Plan-based feature gating: Free plan = service only, Starter/Growth = product + service
+    # Plan-based feature gating: Free plan = WhatsApp allowed, product integration restricted
+    # WhatsApp integration (phone_number_id, verify_token, whatsapp_token, whatsapp_number) is available in ALL plans
     user_plan = get_user_plan(user_id, db)
+
+    # Only block product-type WooCommerce integration for free users, NOT WhatsApp
     if user_plan == "free":
-        # Free plan: only service-based integrations allowed
+        # Free plan: WooCommerce/product integration not allowed, but WhatsApp IS allowed
         if data.business_type == "product":
             raise HTTPException(403, PLAN_ERROR_FREE)
         if data.woocommerce_url and data.woocommerce_url.strip() != "":
             raise HTTPException(403, PLAN_ERROR_FREE)
         if data.woo_consumer_key or data.woo_consumer_secret:
             raise HTTPException(403, PLAN_ERROR_FREE)
+    # Note: WhatsApp fields (phone_number_id, whatsapp_number, verify_token, whatsapp_token) are NOT restricted
 
     # Track if website URL or type changed - if so, clear old cached data
     old_url = integ.woocommerce_url

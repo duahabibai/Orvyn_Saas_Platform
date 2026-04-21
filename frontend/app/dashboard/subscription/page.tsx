@@ -123,10 +123,12 @@ export default function SubscriptionPage() {
     setUpgrading(true);
     try {
       const response = await apiPost("/api/auth/upgrade-plan", { plan: targetPlan });
-      showToast(`Successfully upgraded to ${targetPlan === 'starter' ? 'Starter' : 'Growth'} plan!`, "success");
-      apiGet<Usage>("/api/auth/usage").then(setUsage).catch(console.error);
+      showToast(`Successfully upgraded to ${targetPlan === 'starter' ? 'Starter' : 'Growth'} plan! Refreshing...`, "success");
+      // Refresh usage data
+      const newData = await apiGet<Usage>("/api/auth/usage");
+      setUsage(newData);
     } catch (err: any) {
-      const errorMsg = err.message || err.response?.data?.message || "Failed to upgrade plan";
+      const errorMsg = err.message || "Failed to upgrade plan. Please try again.";
       showToast(errorMsg, "error");
     } finally {
       setUpgrading(false);
@@ -138,10 +140,13 @@ export default function SubscriptionPage() {
     setDowngrading(true);
     try {
       await apiPost("/api/auth/downgrade-plan", { plan: targetPlan });
-      showToast(`Downgraded to ${targetPlan === 'free' ? 'Free' : 'Starter'} plan`, "success");
-      apiGet<Usage>("/api/auth/usage").then(setUsage).catch(console.error);
+      showToast(`Downgraded to ${targetPlan === 'free' ? 'Free' : 'Starter'} plan. Refreshing...`, "success");
+      // Refresh usage data
+      const newData = await apiGet<Usage>("/api/auth/usage");
+      setUsage(newData);
     } catch (err: any) {
-      showToast(err.message || "Failed to downgrade", "error");
+      const errorMsg = err.message || "Failed to downgrade. Please try again.";
+      showToast(errorMsg, "error");
     } finally {
       setDowngrading(false);
     }
